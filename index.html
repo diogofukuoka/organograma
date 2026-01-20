@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor Teológico em Organograma</title>
+    <!-- Importando PDF.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; margin: 0; }
+        h1 { text-align: center; color: #333; }
+        
+        /* Área de Upload */
+        .upload-container {
+            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center; max-width: 600px; margin: 0 auto 30px auto;
+        }
+        input[type="file"] { margin-top: 10px; }
+
+        /* Estilos do Organograma (CSS Tree) */
+        .tree {
+            width: 100%;
+            overflow-x: auto; /* Permite rolagem horizontal se ficar muito grande */
+            padding-bottom: 50px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tree ul {
+            padding-top: 20px; position: relative;
+            transition: all 0.5s;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tree li {
+            float: left; text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 5px 0 5px;
+            transition: all 0.5s;
+        }
+
+        /* Linhas conectoras */
+        .tree li::before, .tree li::after {
+            content: ''; position: absolute; top: 0; right: 50%;
+            border-top: 2px solid #ccc; width: 50%; height: 20px;
+        }
+        .tree li::after { right: auto; left: 50%; border-left: 2px solid #ccc; }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child { padding-top: 0; }
+        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+        .tree li:last-child::before { border-right: 2px solid #ccc; border-radius: 0 5px 0 0; }
+        .tree li:first-child::after { border-radius: 5px 0 0 0; }
+        .tree ul ul::before {
+            content: ''; position: absolute; top: 0; left: 50%;
+            border-left: 2px solid #ccc; width: 0; height: 20px;
+        }
+
+        /* A Caixa de Texto (O Nó) */
+        .node-content {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            display: inline-block;
+            text-align: left;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            max-width: 350px; /* Largura máxima para leitura confortável */
+            min-width: 200px;
+            vertical-align: top;
+        }
+
+        .node-content:hover {
+            background: #eef; border-color: #99f;
+            transform: scale(1.02); z-index: 10;
+        }
+
+        .node-title {
+            font-weight: bold; color: #2c3e50; margin-bottom: 8px;
+            border-bottom: 1px solid #eee; padding-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .node-text {
+            font-size: 0.9em; color: #555; line-height: 1.5;
+            white-space: pre-wrap; /* Mantém quebras de linha */
+        }
+
+        /* Cores por nível hierárquico */
+        .level-1 .node-title { color: #d35400; }
+        .level-2 .node-title { color: #2980b9; }
+        .level-3 .node-title { color: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <h1>Leitor de PDF em Organograma</h1>
+    
+    <div class="upload-container">
+        <p>Selecione o PDF (com estrutura 1., 1.1, 1.2...) para gerar a visualização.</p>
+        <input type="file" id="fileInput" accept="application/pdf" />
+        <p id="status" style="color: blue; margin-top: 10px;"></p>
+    </div>
+
+    <div class="tree" id="treeContainer">
+        <!-- O organograma será gerado aqui -->
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').innerText = "Lendo PDF... aguarde.";
+            
+            try {
+                const text = await extractTextFromPDF(file);
+                document.getElementById('status').innerText = "Processando estrutura...";
+                const hierarchy = parseHierarchy(text);
+                renderTree(hierarchy);
+                document.getElementById('status').innerText = "Concluído!";
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').innerText = "Erro ao ler PDF: " + err.message;
+            }
+        });
+
+        // 1. Extração do Texto do PDF
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let fullText = "";
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                
+                // Junta os itens de texto da página
+                const pageText = textContent.items.map(item => item.str).join(" ");
+                fullText += pageText + "\n";
+            }
+            return fullText;
+        }
+
+        // 2. Lógica de Hierarquia (Regex)
+        function parseHierarchy(text) {
+            // Regex para capturar "1. Título", "1.1 Título", "1.1. Título"
+            // Explicação: ^(\d+(?:\.\d+)*) pega os números. \.? pega ponto opcional. \s+ pega espaço. (.+)$ pega o resto.
+            const regex = /(\d+(?:\.\d+)*)\.?\s+([^\n]+)/; 
+            
+            // Vamos dividir o texto grosseiramente por pontos finais ou quebras para tentar achar sentenças
+            // Como o PDF extraído vem meio "sujo", vamos tentar limpar
+            let cleanText = text.replace(/\n/g, " ").replace(/\s+/g, " "); // Remove quebras excessivas
+            
+            // Hack: Vamos tentar reinserir quebras de linha antes dos números de seção para facilitar o split
+            // Procura por padrão "número." precedido de espaço
+            cleanText = cleanText.replace(/\s(\d+(?:\.\d+)+)\.?\s/g, "\n$1 "); 
+            cleanText = cleanText.replace(/\s(\d+)\.\s/g, "\n$1. "); // Para números inteiros como "1. "
+
+            const lines = cleanText.split('\n');
+            
+            let root = { id: "0", title: "Início", content: "", children: [], level: 0 };
+            let stack = [root]; // Pilha para rastrear pais
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                const match = line.match(/^(\d+(?:\.\d+)*)\.?\s+(.*)/);
+
+                if (match) {
+                    const numId = match[1]; // ex: 1.1
+                    const title = match[2].split('.')[0]; // Pega a primeira frase como título
+                    const content = match[2]; // O resto é conteúdo
+                    
+                    const level = numId.split('.').length;
+                    
+                    const newNode = {
+                        id: numId,
+                        title: numId + " " + title,
+                        content: content,
+                        children: [],
+                        level: level
+                    };
+
+                    // Lógica para encontrar o pai correto na pilha
+                    // O nível do pai deve ser (level - 1)
+                    // Se o nível atual for 1, o pai é a raiz (nível 0)
+                    
+                    // Remove da pilha até achar um nó com nível menor que o atual
+                    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+                        stack.pop();
+                    }
+                    
+                    // O último da pilha é o pai
+                    if (stack.length > 0) {
+                        stack[stack.length - 1].children.push(newNode);
+                    } else {
+                        // Fallback se algo der errado, adiciona na raiz
+                        root.children.push(newNode);
+                    }
+                    
+                    stack.push(newNode);
+                } else {
+                    // Se não é título, adiciona ao conteúdo do nó atual (topo da pilha)
+                    if (stack.length > 0) {
+                        // Ignora textos de cabeçalho/rodapé comuns
+                        if(!line.includes("Start of") && !line.includes("Screenshot")) {
+                             stack[stack.length - 1].content += " " + line;
+                        }
+                    }
+                }
+            });
+
+            return root;
+        }
+
+        // 3. Renderização Recursiva (HTML Tree)
+        function renderTree(data) {
+            const container = document.getElementById('treeContainer');
+            container.innerHTML = '';
+            
+            const ul = document.createElement('ul');
+            // Pula a raiz "0" e renderiza os filhos diretos (1, 2, 3...)
+            data.children.forEach(child => {
+                ul.appendChild(createLi(child));
+            });
+            
+            container.appendChild(ul);
+        }
+
+        function createLi(node) {
+            const li = document.createElement('li');
+            
+            const div = document.createElement('div');
+            div.className = `node-content level-${node.level}`;
+            
+            const title = document.createElement('div');
+            title.className = 'node-title';
+            title.innerText = node.title;
+            
+            const text = document.createElement('div');
+            text.className = 'node-text';
+            // Limita o texto visualmente se for muito grande, mas aqui mostraremos tudo conforme pedido
+            text.innerText = node.content; 
+
+            div.appendChild(title);
+            div.appendChild(text);
+            li.appendChild(div);
+
+            if (node.children.length > 0) {
+                const ul = document.createElement('ul');
+                node.children.forEach(child => {
+                    ul.appendChild(createLi(child));
+                });
+                li.appendChild(ul);
+            }
+
+            return li;
+        }
+    </script>
+</body>
+</html>

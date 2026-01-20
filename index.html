@@ -3,35 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organograma Teológico Formatado</title>
+    <title>Organograma Teológico (Alinhado à Esquerda)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; padding: 20px; margin: 0; }
         h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
-        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
         
         .upload-box {
-            background: white; padding: 30px; border-radius: 12px; 
+            background: white; padding: 20px; border-radius: 12px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; 
-            max-width: 600px; margin: 0 auto 40px auto; border: 2px dashed #bdc3c7;
+            max-width: 600px; margin: 0 auto 20px auto; border: 2px dashed #bdc3c7;
         }
-        .upload-box:hover { border-color: #3498db; background-color: #fbfdff; }
 
-        /* --- CSS DA ÁRVORE (ORGANOGRAMA) --- */
+        /* --- CORREÇÃO DO ALINHAMENTO DA ÁRVORE --- */
         .tree {
-            overflow-x: auto; padding-bottom: 50px;
-            display: flex; justify-content: center;
+            width: 100%;
+            overflow-x: auto; /* Barra de rolagem horizontal */
+            padding-bottom: 50px;
+            /* Garante que o conteúdo comece na esquerda e não seja cortado */
+            display: flex; 
+            justify-content: flex-start; 
         }
+
+        .tree-inner {
+            /* Container interno que permite crescer o quanto for necessário */
+            min-width: fit-content;
+            padding: 0 20px;
+            margin: 0 auto; /* Centraliza se for pequeno, mas deixa crescer se for grande */
+        }
+
         .tree ul {
             padding-top: 20px; position: relative;
-            transition: all 0.5s; display: flex; justify-content: center; margin: 0;
+            transition: all 0.5s;
+            display: flex; 
+            justify-content: center; /* Mantém filhos centralizados sob o pai */
+            margin: 0;
         }
+
         .tree li {
             float: left; text-align: center; list-style-type: none;
             position: relative; padding: 20px 10px 0 10px; transition: all 0.5s;
         }
+
         /* Linhas Conectoras */
         .tree li::before, .tree li::after {
             content: ''; position: absolute; top: 0; right: 50%;
@@ -51,12 +66,12 @@
         /* --- CARTÕES (NÓS) --- */
         .node-card {
             background: #fff; border-radius: 8px;
-            padding: 0; /* Padding removido aqui para usar no header/body */
+            padding: 0; 
             display: inline-block; text-align: left;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             max-width: 350px; min-width: 280px;
             vertical-align: top; position: relative; z-index: 2;
-            border-top: 4px solid #ccc; /* Cor padrão */
+            border-top: 4px solid #ccc;
         }
 
         .node-header {
@@ -72,44 +87,41 @@
         }
 
         /* Cores Hierárquicas */
-        .level-1 { border-top-color: #e74c3c; } /* Vermelho */
+        .level-1 { border-top-color: #e74c3c; } 
         .level-1 .node-header { color: #c0392b; background-color: #fdedec; }
         
-        .level-2 { border-top-color: #3498db; } /* Azul */
+        .level-2 { border-top-color: #3498db; } 
         .level-2 .node-header { color: #2980b9; background-color: #ebf5fb; }
         
-        .level-3 { border-top-color: #27ae60; } /* Verde */
+        .level-3 { border-top-color: #27ae60; } 
         .level-3 .node-header { color: #219150; background-color: #e9f7ef; }
         
-        .level-4 { border-top-color: #8e44ad; } /* Roxo */
+        .level-4 { border-top-color: #8e44ad; } 
         .level-4 .node-header { color: #8e44ad; background-color: #f5eef8; }
 
-        /* --- FORMATAÇÃO DO TEXTO INTERNO --- */
-        .node-body ul {
-            display: block; padding-left: 20px; margin: 5px 0;
-            text-align: left;
-        }
-        .node-body li {
-            float: none; padding: 2px 0; text-align: left;
-            list-style-type: disc; /* Bolinha sólida */
-        }
-        .node-body li::before, .node-body li::after { display: none; } /* Remove linhas da árvore dentro do texto */
-        
+        /* Formatação Interna */
+        .node-body ul { display: block; padding-left: 20px; margin: 5px 0; text-align: left; }
+        .node-body li { float: none; padding: 2px 0; text-align: left; list-style-type: disc; }
+        .node-body li::before, .node-body li::after { display: none; }
         .node-body b { color: #000; font-weight: 700; }
-        .highlight-label { color: #d35400; font-weight: bold; } /* Cor para "Strong:", "Termo:" */
+        .highlight-label { color: #d35400; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h1>Leitor Teológico Estruturado</h1>
-    <p class="subtitle">Gera organogramas respeitando listas e formatações do PDF</p>
     
     <div class="upload-box">
         <input type="file" id="fileInput" accept="application/pdf" />
         <p id="status" style="color: #2980b9; margin-top: 15px; font-weight: 600;"></p>
     </div>
 
-    <div class="tree" id="treeContainer"></div>
+    <!-- Container da Árvore -->
+    <div class="tree">
+        <div class="tree-inner" id="treeContainer">
+            <!-- O organograma entra aqui -->
+        </div>
+    </div>
 
     <script>
         document.getElementById('fileInput').addEventListener('change', async function(e) {
@@ -117,25 +129,36 @@
             if (!file) return;
 
             const status = document.getElementById('status');
-            status.innerText = "Lendo PDF e identificando formatações...";
+            status.innerText = "Lendo PDF...";
             
             try {
                 const text = await extractTextFromPDF(file);
-                status.innerText = "Montando estrutura...";
+                status.innerText = "Processando estrutura...";
                 
                 const hierarchy = parseHierarchy(text);
                 
+                // Conta quantos nós foram encontrados para debug
+                const totalNodes = countNodes(hierarchy);
+                
                 if (hierarchy.children.length === 0) {
-                    status.innerText = "Não foi possível identificar a estrutura (1., 1.1). Verifique se o PDF é pesquisável.";
+                    status.innerText = "Nenhum tópico encontrado. Verifique se o PDF tem numeração (1., 1.1).";
                 } else {
                     renderTree(hierarchy);
-                    status.innerText = "Concluído!";
+                    status.innerText = `Concluído! Encontrados ${totalNodes} tópicos. Role para a direita para ver tudo.`;
                 }
             } catch (err) {
                 console.error(err);
                 status.innerText = "Erro: " + err.message;
             }
         });
+
+        function countNodes(node) {
+            let count = 1;
+            if(node.children) {
+                node.children.forEach(child => count += countNodes(child));
+            }
+            return count;
+        }
 
         async function extractTextFromPDF(file) {
             const arrayBuffer = await file.arrayBuffer();
@@ -145,7 +168,6 @@
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                // Preserva melhor as quebras de linha originais
                 let lastY, text = "";
                 for (let item of textContent.items) {
                     if (lastY == item.transform[5] || !lastY){
@@ -167,25 +189,21 @@
             let stack = [root];
             let stopParsing = false;
 
-            // Regex para identificar títulos numéricos (1., 1.1, 2.3.1)
             const headerRegex = /^\s*(\d+(?:\.\d+)*)\.?\s+(.{3,})/; 
 
             for (let i = 0; i < lines.length; i++) {
                 let line = lines[i].trim();
                 if (!line) continue;
 
-                // Filtro de Referências Bibliográficas
                 if (line.toLowerCase().match(/referências citadas|bibliografia|references/)) {
                     stopParsing = true;
                 }
                 if (stopParsing) continue;
 
-                // Filtro de sujeira de OCR
                 if (line.includes("Start of") || line.includes("Screenshot") || line.includes("Page")) continue;
 
                 const match = line.match(headerRegex);
 
-                // Verifica se é um título válido
                 if (match && match[2].length < 150) {
                     const numId = match[1];
                     const titleText = match[2];
@@ -194,7 +212,7 @@
                     const newNode = {
                         id: numId,
                         title: numId + " " + titleText,
-                        content: [], // Array de linhas para preservar formatação
+                        content: [],
                         children: [],
                         level: level
                     };
@@ -211,9 +229,7 @@
                     stack.push(newNode);
 
                 } else {
-                    // É conteúdo
                     if (stack.length > 0) {
-                        // Limpeza básica
                         let cleanLine = line.replace(/Gemini/g, "").replace(/Start of OCR/g, "");
                         if(cleanLine.trim()) {
                             stack[stack.length - 1].content.push(cleanLine);
@@ -224,60 +240,36 @@
             return root;
         }
 
-        // --- FUNÇÃO DE FORMATAÇÃO INTELIGENTE ---
         function formatContentHTML(contentLines) {
             if (!contentLines || contentLines.length === 0) return "";
-
             let html = "";
             let inList = false;
 
             contentLines.forEach(line => {
                 line = line.trim();
-                
-                // 1. Detectar Listas (● ou •)
                 if (line.startsWith("●") || line.startsWith("•") || line.startsWith("- ")) {
-                    if (!inList) {
-                        html += "<ul>";
-                        inList = true;
-                    }
-                    // Remove o marcador original e cria o li
+                    if (!inList) { html += "<ul>"; inList = true; }
                     let cleanText = line.replace(/^[●•-]\s*/, "");
-                    // Aplica negrito em rótulos dentro da lista (ex: "Termo Original:")
                     cleanText = boldLabels(cleanText);
                     html += `<li>${cleanText}</li>`;
                 } else {
-                    if (inList) {
-                        html += "</ul>";
-                        inList = false;
-                    }
-                    // Parágrafo normal
-                    // Aplica negrito em rótulos (ex: "Texto ACF 2011:")
+                    if (inList) { html += "</ul>"; inList = false; }
                     let formattedLine = boldLabels(line);
                     html += `<p style="margin: 5px 0;">${formattedLine}</p>`;
                 }
             });
-
             if (inList) html += "</ul>";
             return html;
         }
 
         function boldLabels(text) {
-            // Regex para encontrar padrões como "Rótulo: Valor" e colocar negrito no Rótulo
-            // Procura por texto no início ou após espaço, seguido de dois pontos
-            // Ex: "Strong:", "Termo Original:", "Texto ACF 2011:"
-            
-            // 1. Negrito para termos específicos conhecidos (mais seguro)
             text = text.replace(/(Texto ACF \d+:)/g, "<b>$1</b>");
             text = text.replace(/(Termo Original:)/g, "<span class='highlight-label'>$1</span>");
             text = text.replace(/(Strong:)/g, "<span class='highlight-label'>$1</span>");
             text = text.replace(/(Significado Básico:)/g, "<b>$1</b>");
             text = text.replace(/(Nuance [A-Za-z]+:)/g, "<b>$1</b>");
             text = text.replace(/(Análise [A-Za-z]+:)/g, "<b>$1</b>");
-            
-            // 2. Negrito genérico para frases curtas seguidas de dois pontos no início da linha
-            // (Cuidado para não pegar versículos bíblicos como 9:23)
             text = text.replace(/^([A-ZÀ-Ú][a-zà-ú\s]+):/g, "<b>$1:</b>");
-
             return text;
         }
 
@@ -295,7 +287,6 @@
 
         function createLi(node) {
             const li = document.createElement('li');
-            
             const card = document.createElement('div');
             card.className = `node-card level-${node.level}`;
             
@@ -305,8 +296,6 @@
             
             const body = document.createElement('div');
             body.className = 'node-body';
-            
-            // AQUI A MÁGICA ACONTECE: Converte o array de texto em HTML formatado
             body.innerHTML = formatContentHTML(node.content);
 
             card.appendChild(header);
@@ -321,7 +310,6 @@
                 });
                 li.appendChild(ul);
             }
-
             return li;
         }
     </script>
